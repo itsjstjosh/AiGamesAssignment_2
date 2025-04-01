@@ -18,35 +18,95 @@ int main(int argc, char *argv[])
 
   std::vector<cv::Mat> images;
   std::vector<int>     labels;
+  cv::Mat frame;
+  double fps = 30;
+  const char win_name[] = "Live Video...";
+  int currentPrediction = -1;
 
-  // Iterate through all subdirectories, looking for .pgm files
-  fs::path p(argc > 1 ? argv[1] : "../../att_faces");
-  for (const auto &entry : fs::recursive_directory_iterator{ p }) {
-    if (fs::is_regular_file(entry.status())) { // Was once always (wrongly) false in VS
-      if (entry.path().extension() == ".pgm") {
-        std::string str = entry.path().parent_path().stem().string(); // s26 s27 etc.
-        int label = atoi(str.c_str() + 1); // s1 -> 1 (pointer arithmetic)
-        images.push_back(cv::imread(entry.path().string().c_str(), cv::IMREAD_GRAYSCALE));
-        labels.push_back(label);
-      }
+
+  std::cout << "Wait 60 secs. for camera access to be obtained..." << std::endl;
+  cv::VideoCapture vid_in(0);   // argument is the camera id
+
+    std::cout << " training..." << std::endl;
+    fs::path p(argc > 1 ? argv[1] : "../../att_faces");
+    for (const auto &entry : fs::recursive_directory_iterator{ p }) 
+    {
+        if (fs::is_regular_file(entry.status())) 
+        { // Was once always (wrongly) false in VS
+            if (entry.path().extension() == ".pgm") {
+            std::string str = entry.path().parent_path().stem().string(); // s26 s27 etc.
+            int label = atoi(str.c_str() + 1); // s1 -> 1 (pointer arithmetic)
+            images.push_back(cv::imread(entry.path().string().c_str(), cv::IMREAD_GRAYSCALE));
+            labels.push_back(label);
+            }
+        }
     }
+    cv::Ptr<cv::face::BasicFaceRecognizer> model = cv::face::EigenFaceRecognizer::create();
+    model->train(images, labels);
+    std::cout << "training complete" << std::endl;
+
+
+  if (vid_in.isOpened())
+  {
+      std::cout << "Camera capture obtained." << std::endl;
+  }
+  else
+  {
+      std::cerr << "error: Camera 0 could not be opened for capture.\n";
+      return -1;
   }
 
-// Randomly choose an image and test the system
-  std::random_device dev{};
-  std::mt19937 generator{dev()};
-  std::uniform_int_distribution<int> dist{0, static_cast<int>(images.size() - 1)};
-  int rand_image_id = dist(generator); // random image id
+  int i{ 0 }; // a simple counter to save multiple images
+  while (1) {
+      vid_in >> frame;
 
-  cv::Mat testSample = images[rand_image_id];
-  int     testLabel  = labels[rand_image_id];
-  std::cout << "Actual class    = " << testLabel << '\n';
-  std::cout << " training...";
+      int frameWidth = frame.cols;
+      int frameHeight = frame.rows;
+      int boxWidth = 92 * 3;  
+      int boxHeight = 112 * 3; 
+      int x = (frameWidth - boxWidth) / 2;  
+      int y = (frameHeight - boxHeight) / 3; 
 
-  cv::Ptr<cv::face::BasicFaceRecognizer> model = cv::face::EigenFaceRecognizer::create();
-  model->train(images, labels);
-  int predictedLabel = model->predict(testSample);
-  std::cout << "\nPredicted class = " << predictedLabel << '\n';
+      cv::rectangle(frame, cv::Point(x, y), cv::Point(x + boxWidth, y + boxHeight), cv::Scalar(0, 255, 0), 2);
 
+      cv::imshow(win_name, frame);
+      int code = cv::waitKey(1000 / fps); // how long to wait for a key (msecs)
+      if (code == 27) // escape. See http://www.asciitable.com/
+      { 
+          break;
+      
+      }
+
+      cv::Mat grabbedImage = frame(cv::Rect(x,y,boxWidth, boxHeight));
+      cv::cvtColor(grabbedImage, grabbedImage, cv::COLOR_BGR2GRAY);
+      cv::resize(grabbedImage, grabbedImage, cv::Size(92, 112));
+      //cv::imwrite("../out.png", grabbedImage);
+
+      int predictedLabel = model->predict(grabbedImage);
+
+      if (predictedLabel == 41 ||predictedLabel == 40 || predictedLabel == 39) // space.  ""
+      {
+          if (currentPrediction != predictedLabel) 
+          {
+                currentPrediction = predictedLabel;
+                std::cout << "\nPredicted class = " << predictedLabel << '\n';
+                cv::imwrite(std::string("../out") + std::to_string(i++) + ".png", grabbedImage);
+                //break;
+          }
+
+     
+
+      }
+      
+  }
+
+          
+  
+  
+
+  vid_in.release();
   return 0;
+
+
+
 }
