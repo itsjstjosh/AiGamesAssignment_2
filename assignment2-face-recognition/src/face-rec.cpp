@@ -69,7 +69,6 @@ int main(int argc, char *argv[])
 
       cv::rectangle(frame, cv::Point(x, y), cv::Point(x + boxWidth, y + boxHeight), cv::Scalar(0, 255, 0), 2);
 
-      cv::imshow(win_name, frame);
       int code = cv::waitKey(1000 / fps); // how long to wait for a key (msecs)
       if (code == 27) // escape. See http://www.asciitable.com/
       { 
@@ -77,10 +76,20 @@ int main(int argc, char *argv[])
       
       }
 
-      cv::Mat grabbedImage = frame(cv::Rect(x,y,boxWidth, boxHeight));
+      cv::Mat grabbedImage = frame(cv::Rect(x,y,boxWidth, boxHeight)).clone();
       cv::cvtColor(grabbedImage, grabbedImage, cv::COLOR_BGR2GRAY);
       cv::resize(grabbedImage, grabbedImage, cv::Size(92, 112));
       //cv::imwrite("../out.png", grabbedImage);
+
+      // flips box upside down remove comment lines before submission or for testing //
+      /*
+      cv::Mat Area = frame(cv::Rect(x, y, boxWidth, boxHeight)).clone();
+      cv::Mat flippedArea;
+      cv::flip(Area, flippedArea, 0);
+
+      flippedArea.copyTo(frame(cv::Rect(x, y, boxWidth, boxHeight)));
+      */
+      cv::imshow(win_name, frame);
 
       int predictedLabel = model->predict(grabbedImage);
 
