@@ -2,6 +2,7 @@
 #include "opencv2/face.hpp"
 #include "opencv2/highgui.hpp"
 #include "opencv2/imgproc.hpp"
+#include <opencv2/opencv.hpp> //test
 #include "opencv2/core/utils/logger.hpp" // utils::logging::LOG_LEVEL_WARNING
 #include <iostream>
 #include <filesystem>
@@ -9,6 +10,38 @@
 #include <vector>
 
 // g++ -std=c++17 face-rec.cpp -lopencv_face -lopencv_core -lopencv_imgcodecs
+
+//For mouse drag
+cv::Rect rect(100, 100, 100, 100);
+bool isDragging = false;
+cv::Point clickOffset;
+
+void mouseCallBack(int event, int x, int y, int flags, void* userdata) {
+    switch (event)
+    {
+    case cv::EVENT_LBUTTONDOWN:
+        if (rect.contains(cv::Point(x, y))) {
+            isDragging = true;
+            clickOffset = cv::Point(x, y) - rect.tl();
+            std::cout << "Click down is registered." << std::endl;
+        }
+        break;
+
+    case cv::EVENT_MOUSEMOVE:
+        if (isDragging) {
+            rect.x = x - clickOffset.x;
+            rect.y = y - clickOffset.y;
+            std::cout << "Click Move is registered." << std::endl;
+        }
+        break;
+
+    case cv::EVENT_LBUTTONUP:
+        isDragging = false;
+        std::cout << "Click release is registered." << std::endl;
+        break;
+    }
+    
+}
 
 int main(int argc, char *argv[])
 {
@@ -68,6 +101,7 @@ int main(int argc, char *argv[])
       int y = (frameHeight - boxHeight) / 3; 
 
       cv::rectangle(frame, cv::Point(x, y), cv::Point(x + boxWidth, y + boxHeight), cv::Scalar(0, 255, 0), 2);
+      //setMouseCallback("Draggable Object", mouseCallback); Attempt at calling the mouse clicks
 
       int code = cv::waitKey(1000 / fps); // how long to wait for a key (msecs)
       if (code == 27) // escape. See http://www.asciitable.com/
@@ -79,6 +113,7 @@ int main(int argc, char *argv[])
       cv::Mat grabbedImage = frame(cv::Rect(x,y,boxWidth, boxHeight)).clone();
       cv::cvtColor(grabbedImage, grabbedImage, cv::COLOR_BGR2GRAY);
       cv::resize(grabbedImage, grabbedImage, cv::Size(92, 112));
+      
       //cv::imwrite("../out.png", grabbedImage);
 
       // flips box upside down remove comment lines before submission or for testing //
