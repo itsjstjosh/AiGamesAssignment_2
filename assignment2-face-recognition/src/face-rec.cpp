@@ -12,31 +12,46 @@
 // g++ -std=c++17 face-rec.cpp -lopencv_face -lopencv_core -lopencv_imgcodecs
 
 //For mouse drag
-cv::Point objectPos(1, 1);
+cv::Point objectPos(50 , 25);
 bool isDragging = false;
 cv::Point clickOffset;
 
 void mouseCallBack(int event, int x, int y, int flags, void* userdata) {
+    
+    int boxWidth = 92 * 3;
+    int boxHeight = 112 * 3;
+    int frameWidth = 640;  
+    int frameHeight = 480;
+
+    if (userdata) {
+        cv::Size* frameSize = static_cast<cv::Size*>(userdata);
+        frameWidth = frameSize->width;
+        frameHeight = frameSize->height;
+    }
+
     switch (event)
     {
     case cv::EVENT_LBUTTONDOWN:
-        if (cv::norm(objectPos - cv::Point(x, y))) /* < 25*/ {
+        if (cv::Rect(objectPos, cv::Size(92*3, 112*3)).contains(cv::Point(x, y))) {
             isDragging = true;
             clickOffset = objectPos - cv::Point(x, y);
-            std::cout << "Click down is registered." << std::endl;
+            //std::cout << "Click down is registered." << std::endl;
         }
         break;
 
     case cv::EVENT_MOUSEMOVE:
         if (isDragging) {
             objectPos = cv::Point(x, y) + clickOffset;
-            std::cout << "Click Move is registered." << std::endl;
+            //std::cout << "Click Move is registered.";
+
+            objectPos.x = std::max(0, std::min(objectPos.x, frameWidth - boxWidth));
+            objectPos.y = std::max(0, std::min(objectPos.y, frameHeight - boxHeight));
         }
         break;
 
     case cv::EVENT_LBUTTONUP:
         isDragging = false;
-        std::cout << "Click release is registered." << std::endl;
+        //std::cout << "Click release is registered.";
         break;
     }
     
@@ -55,8 +70,10 @@ int main(int argc, char *argv[])
   const char win_name[] = "Live Video...";
   int currentPrediction = -1;
 
+  cv::namedWindow(win_name);
+  cv::setMouseCallback(win_name, mouseCallBack);
 
-  std::cout << "Wait 60 secs. for camera access to be obtained..." << std::endl;
+  std::cout << "Wait up to 60 secs. for camera access to be obtained..." << std::endl;
   cv::VideoCapture vid_in(0);   // argument is the camera id
 
     std::cout << " training..." << std::endl;
@@ -75,12 +92,12 @@ int main(int argc, char *argv[])
     }
     cv::Ptr<cv::face::BasicFaceRecognizer> model = cv::face::EigenFaceRecognizer::create();
     model->train(images, labels);
-    std::cout << "training complete" << std::endl;
+    std::cout << "training complete! put your face in the box!" << std::endl;
 
 
   if (vid_in.isOpened())
   {
-      std::cout << "Camera capture obtained." << std::endl;
+      std::cout << "Camera capture obtained!" << std::endl;
   }
   else
   {
@@ -88,7 +105,8 @@ int main(int argc, char *argv[])
       return -1;
   }
 
-  int i{ 0 }; // a simple counter to save multiple images
+
+  int i{ 0 }; // counter to save multiple images
   while (1) {
       vid_in >> frame;
 
@@ -98,32 +116,32 @@ int main(int argc, char *argv[])
       int boxHeight = 112 * 3; 
       int x = (frameWidth - boxWidth) / 2;  
       int y = (frameHeight - boxHeight) / 3; 
+      
 
-      cv::rectangle(frame, objectPos, cv::Point(x + boxWidth, y + boxHeight), cv::Scalar(255, 200, 100), 2);
+      cv::rectangle(frame, objectPos,objectPos + cv::Point(boxWidth,boxHeight), cv::Scalar(255, 200, 100), 2);
       // after frame used to be -> cv::Point(x, y)
-      cv::setMouseCallback("Draggable Object", mouseCallBack);
 
       int code = cv::waitKey(1000 / fps); // how long to wait for a key (msecs)
-      if (code == 27) // escape. See http://www.asciitable.com/
+      if (code == 27) // escape
       { 
           break;
       
       }
 
-      cv::Mat grabbedImage = frame(cv::Rect(x,y,boxWidth, boxHeight)).clone();
-      cv::cvtColor(grabbedImage, grabbedImage, cv::COLOR_BGR2GRAY);
-      cv::resize(grabbedImage, grabbedImage, cv::Size(92, 112));
+      cv::Mat grabbedImage = frame(cv::Rect(objectPos, cv::Size( boxWidth, boxHeight))).clone();
+      cv::cvtColor(grabbedImage, grabbedImage, cv::COLOR_BGR2GRAY); //converts to greayscale
+      cv::resize(grabbedImage, grabbedImage, cv::Size(92, 112)); //resizes the image to the correct size (the size of the box has to be the correct aspect ratio or it doesnt run)
       
 
-      // flips box upside down remove comment lines before submission or for testing //
+      // flips box upside down and inverts colours //
       /*
-      cv::Mat Area = frame(cv::Rect(x, y, boxWidth, boxHeight)).clone();
+      */
+      cv::Mat Area = frame(cv::Rect(objectPos, cv::Size(boxWidth, boxHeight))).clone();
       cv::Mat flippedArea, invertedArea;
       cv::flip(Area, flippedArea, 0);
       cv::bitwise_not(flippedArea, invertedArea);
       
-      invertedArea.copyTo(frame(cv::Rect(x, y, boxWidth, boxHeight)));
-      */
+      invertedArea.copyTo(frame(cv::Rect(objectPos, cv::Size(boxWidth, boxHeight))));
       cv::imshow(win_name, frame);
 
       int predictedLabel = model->predict(grabbedImage);
@@ -132,6 +150,7 @@ int main(int argc, char *argv[])
       {
           if (currentPrediction != predictedLabel) 
           {
+                cv::imwrite(std::string("../out") + std::to_string(i++) + ".png", grabbedImage); //saves file to test filters and moving box
                 currentPrediction = predictedLabel;
 
                 std::cout << "'\n'**********************************************";
@@ -140,7 +159,6 @@ int main(int argc, char *argv[])
                 std::cout << "'\n'*                                            *";
                 std::cout << "'\n'**********************************************";
 
-                cv::imwrite(std::string("../out") + std::to_string(i++) + ".png", grabbedImage);
                 //break;
           }
 
@@ -148,11 +166,6 @@ int main(int argc, char *argv[])
       }
       
   }
-
-
   vid_in.release();
   return 0;
-
-
-
 }
