@@ -12,7 +12,7 @@
 // g++ -std=c++17 face-rec.cpp -lopencv_face -lopencv_core -lopencv_imgcodecs
 
 //For mouse drag
-cv::Rect rect(100, 100, 100, 100);
+cv::Point objectPos(1, 1);
 bool isDragging = false;
 cv::Point clickOffset;
 
@@ -20,17 +20,16 @@ void mouseCallBack(int event, int x, int y, int flags, void* userdata) {
     switch (event)
     {
     case cv::EVENT_LBUTTONDOWN:
-        if (rect.contains(cv::Point(x, y))) {
+        if (cv::norm(objectPos - cv::Point(x, y))) /* < 25*/ {
             isDragging = true;
-            clickOffset = cv::Point(x, y) - rect.tl();
+            clickOffset = objectPos - cv::Point(x, y);
             std::cout << "Click down is registered." << std::endl;
         }
         break;
 
     case cv::EVENT_MOUSEMOVE:
         if (isDragging) {
-            rect.x = x - clickOffset.x;
-            rect.y = y - clickOffset.y;
+            objectPos = cv::Point(x, y) + clickOffset;
             std::cout << "Click Move is registered." << std::endl;
         }
         break;
@@ -100,8 +99,9 @@ int main(int argc, char *argv[])
       int x = (frameWidth - boxWidth) / 2;  
       int y = (frameHeight - boxHeight) / 3; 
 
-      cv::rectangle(frame, cv::Point(x, y), cv::Point(x + boxWidth, y + boxHeight), cv::Scalar(255, 200, 100), 2);
-      //setMouseCallback("Draggable Object", mouseCallback); Attempt at calling the mouse clicks
+      cv::rectangle(frame, objectPos, cv::Point(x + boxWidth, y + boxHeight), cv::Scalar(255, 200, 100), 2);
+      // after frame used to be -> cv::Point(x, y)
+      cv::setMouseCallback("Draggable Object", mouseCallBack);
 
       int code = cv::waitKey(1000 / fps); // how long to wait for a key (msecs)
       if (code == 27) // escape. See http://www.asciitable.com/
