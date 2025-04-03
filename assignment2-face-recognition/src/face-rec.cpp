@@ -100,7 +100,7 @@ int main(int argc, char *argv[])
       int x = (frameWidth - boxWidth) / 2;  
       int y = (frameHeight - boxHeight) / 3; 
 
-      cv::rectangle(frame, cv::Point(x, y), cv::Point(x + boxWidth, y + boxHeight), cv::Scalar(0, 255, 0), 2);
+      cv::rectangle(frame, cv::Point(x, y), cv::Point(x + boxWidth, y + boxHeight), cv::Scalar(255, 200, 100), 2);
       //setMouseCallback("Draggable Object", mouseCallback); Attempt at calling the mouse clicks
 
       int code = cv::waitKey(1000 / fps); // how long to wait for a key (msecs)
@@ -114,39 +114,41 @@ int main(int argc, char *argv[])
       cv::cvtColor(grabbedImage, grabbedImage, cv::COLOR_BGR2GRAY);
       cv::resize(grabbedImage, grabbedImage, cv::Size(92, 112));
       
-      //cv::imwrite("../out.png", grabbedImage);
 
       // flips box upside down remove comment lines before submission or for testing //
       /*
       cv::Mat Area = frame(cv::Rect(x, y, boxWidth, boxHeight)).clone();
-      cv::Mat flippedArea;
+      cv::Mat flippedArea, invertedArea;
       cv::flip(Area, flippedArea, 0);
-
-      flippedArea.copyTo(frame(cv::Rect(x, y, boxWidth, boxHeight)));
+      cv::bitwise_not(flippedArea, invertedArea);
+      
+      invertedArea.copyTo(frame(cv::Rect(x, y, boxWidth, boxHeight)));
       */
       cv::imshow(win_name, frame);
 
       int predictedLabel = model->predict(grabbedImage);
 
-      if (predictedLabel == 41 ||predictedLabel == 40 || predictedLabel == 39) // space.  ""
+      if (predictedLabel == 41 ||predictedLabel == 42 || predictedLabel == 43) // space.  ""
       {
           if (currentPrediction != predictedLabel) 
           {
                 currentPrediction = predictedLabel;
-                std::cout << "\nPredicted class = " << predictedLabel << '\n';
+
+                std::cout << "'\n'**********************************************";
+                std::cout << "'\n'*                                            *";
+                std::cout << "'\n'*          Predicted class = " << predictedLabel <<"              *";
+                std::cout << "'\n'*                                            *";
+                std::cout << "'\n'**********************************************";
+
                 cv::imwrite(std::string("../out") + std::to_string(i++) + ".png", grabbedImage);
                 //break;
           }
 
-     
 
       }
       
   }
 
-          
-  
-  
 
   vid_in.release();
   return 0;
