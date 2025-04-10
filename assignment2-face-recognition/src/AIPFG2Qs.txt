@@ -1,0 +1,10 @@
+A) TheFaceRecognizer::predict method returns a label indicating a match
+ has been found. Is it possible to obtain a measure of the system’s confi
+dence in that match?
+
+Answer: Yes, this method can give a confidence score. A lower score means a better match.
+
+B) Does the program compensate if you are far from the camera? Might a
+ cascading classifier help? 
+
+Answer: No, the program does not adjust if you are too far away from the camera. A cascading classifier could help. It could help by detecting the faces at different sizes.
